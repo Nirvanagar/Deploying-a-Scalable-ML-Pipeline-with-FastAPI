@@ -9,4 +9,3 @@ __pycache__/
 venv/
 model/*.pkl
 model/*.joblib
-slice_output.txt
