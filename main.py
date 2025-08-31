@@ -1,8 +1,10 @@
+import os
 import pandas as pd
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from ml.data import apply_label, process_data
-from ml.model import load_model
+from ml.model import load_model, inference
 
 # DO NOT MODIFY
 
@@ -26,51 +28,54 @@ class Data(BaseModel):
     native_country: str = Field(..., example="United-States", alias="native-country")
 
 
-path = None  # TODO: enter the path for the saved encoder
-encoder = load_model(path)
+# ----- Artifacts -----
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENC_PATH = os.path.join(BASE_DIR, "model", "encoder.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, "model", "model.pkl")
 
-path = None  # TODO: enter the path for the saved model
-model = load_model(path)
+try:
+    encoder = load_model(ENC_PATH)
+    model = load_model(MODEL_PATH)
+except Exception as e:
+    # Fail fast with a clear message if artifacts are missing
+    raise RuntimeError(f"Failed to load artifacts: {e}")
 
-# TODO: create a RESTful API using FastAPI
-app = None  # your code here
+# ----- App -----
+app = FastAPI(title="Income Classifier API")
 
-# TODO: create a GET on the root giving a welcome message
-
+cat_features = [
+    "workclass",
+    "education",
+    "marital-status",
+    "occupation",
+    "relationship",
+    "race",
+    "sex",
+    "native-country",
+]
 
 @app.get("/")
 async def get_root():
-    """ Say hello!"""
-    # your code here
-    pass
+    return {"message": "hello!"}  # keep this to match your current output
 
-
-# TODO: create a POST on a different path that does model inference
 @app.post("/data/")
 async def post_inference(data: Data):
-    # DO NOT MODIFY: turn the Pydantic model into a dict.
-    data_dict = data.dict()
-    # DO NOT MODIFY: clean up the dict to turn it into a Pandas DataFrame.
-    # The data has names with hyphens and Python does not allow those as variable names.
-    # Here it uses the functionality of FastAPI/Pydantic/etc to deal with this.
-    data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
-    data = pd.DataFrame.from_dict(data)
+    try:
+        # Prepare a one-row DataFrame with hyphenated column names
+        data_dict = data.dict()
+        row = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
+        df = pd.DataFrame.from_dict(row)
 
-    # cat_features = [
-    #    "workclass",
-    #    "education",
-    #    "marital-status",
-    #    "occupation",
-    #    "relationship",
-    #    "race",
-    #    "sex",
-    #    "native-country",
-    # ]
-    data_processed, _, _, _ = process_data(
-        # your code here
-        # use data as data input
-        # use training = False
-        # do not need to pass lb as input
-    )
-    _inference = None  # your code here to predict the result using data_processed
-    return {"result": apply_label(_inference)}
+        X, _, _, _ = process_data(
+            df,
+            categorical_features=cat_features,
+            label=None,
+            training=False,
+            encoder=encoder,
+            lb=None,
+        )
+        pred = inference(model, X)                # np.array([0 or 1])
+        return {"result": apply_label(pred)}      # ">50K" or "<=50K"
+    except Exception as e:
+        # Return JSON error so the client can print it (no HTML 500 page)
+        raise HTTPException(status_code=400, detail=f"Inference error: {e}")

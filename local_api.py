@@ -1,12 +1,17 @@
-# TODO: send a GET using the URL http://127.0.0.1:8000
-r = None  # Your code here
+# local_api.py
+import requests
 
-# TODO: print the status code
-# print()
-# TODO: print the welcome message
-# print()
+BASE_URL = "http://127.0.0.1:8000"
 
+# --- GET ---
+r = requests.get(f"{BASE_URL}/")
+print("Status Code:", r.status_code)
+try:
+    print("Result:", r.json().get("message"))
+except Exception:
+    print("Raw Response:", r.text)
 
+# --- POST ---
 data = {
     "age": 37,
     "workclass": "Private",
@@ -24,10 +29,9 @@ data = {
     "native-country": "United-States",
 }
 
-# TODO: send a POST using the data above
-r = None  # Your code here
-
-# TODO: print the status code
-# print()
-# TODO: print the result
-# print()
+r = requests.post(f"{BASE_URL}/data/", json=data)
+print("Status Code:", r.status_code)
+try:
+    print("Result:", r.json().get("result"))
+except Exception:
+    print("Raw Response:", r.text)
