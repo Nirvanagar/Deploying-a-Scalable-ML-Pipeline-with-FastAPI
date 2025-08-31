@@ -1,8 +1,7 @@
 import os
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-
 from ml.data import apply_label, process_data
 from ml.model import load_model, inference
 
@@ -54,9 +53,11 @@ cat_features = [
     "native-country",
 ]
 
+
 @app.get("/")
 async def get_root():
     return {"message": "hello!"}  # keep this to match your current output
+
 
 @app.post("/data/")
 async def post_inference(data: Data):
